@@ -1,5 +1,6 @@
 import random
 import hashlib
+from datetime import datetime
 from flask import Flask, render_template, request, jsonify
 
 app = Flask(__name__)
@@ -32,7 +33,7 @@ ATCS_MEDAN_CCTV = [
         "lat": 3.5794,
         "lng": 98.6823,
         "stream_url": "https://atcsdishub.medan.go.id/stream/L12SUPRAPTOMULTATULI/stream.m3u8"
-    },
+    }
 ]
 
 class Kendaraan:
@@ -129,7 +130,10 @@ def api_route():
         return jsonify({"error": "Data rute kosong"}), 400
 
     kendaraan = Kendaraan(jenis_kendaraan)
-    kondisi_opsi = ['lancar', 'padat', 'macet']
+    
+    sekarang = datetime.now()
+    jam = sekarang.hour
+    is_rush_hour = (7 <= jam <= 9) or (16 <= jam <= 18)
     
     list_objek_jalur = []
     for seg in segments:
@@ -139,12 +143,21 @@ def api_route():
             
         nama_jalan = seg.get('name', 'Jalan Tanpa Nama')
         hash_val = int(hashlib.md5(nama_jalan.encode()).hexdigest(), 16) % 100
-        if hash_val < 60:
-            kondisi = 'lancar'
-        elif hash_val < 90:
-            kondisi = 'padat'
+        
+        if is_rush_hour:
+            if hash_val < 30:
+                kondisi = 'lancar'
+            elif hash_val < 60:
+                kondisi = 'padat'
+            else:
+                kondisi = 'macet'
         else:
-            kondisi = 'macet'
+            if hash_val < 60:
+                kondisi = 'lancar'
+            elif hash_val < 90:
+                kondisi = 'padat'
+            else:
+                kondisi = 'macet'
         
         objek_jalur = Jalur(nama_jalan, jarak_km, kondisi)
         list_objek_jalur.append(objek_jalur)
