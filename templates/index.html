@@ -74,6 +74,9 @@
                         <div class="relative z-10 flex items-center gap-2.5">
                             <div class="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center border-2 border-white shadow-sm shrink-0"><div class="w-2.5 h-2.5 bg-blue-600 rounded-full"></div></div>
                             <input type="text" id="asalText" readonly placeholder="Pilih titik asal di peta..." class="w-full bg-slate-50 hover:bg-slate-100 transition rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none cursor-pointer">
+                            <button type="button" id="btnGps" class="shrink-0 p-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.242-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                            </button>
                         </div>
                         <div class="relative z-10 flex items-center gap-2.5">
                             <div class="w-7 h-7 rounded-full bg-red-100 flex items-center justify-center border-2 border-white shadow-sm shrink-0">
@@ -251,7 +254,7 @@
         function playVideo(video) {
             const promise = video.play();
             if (promise && typeof promise.catch === 'function') {
-                promise.catch((err) => console.warn('Autoplay CCTV diblokir browser:', err));
+                promise.catch((err) => console.warn(err));
             }
         }
 
@@ -266,7 +269,7 @@
             }
 
             video.dataset.fallbackActive = 'true';
-            setCctvStatus(videoId, 'Stream ATCS sedang offline, menampilkan video demo.', 'warn');
+            setCctvStatus(videoId, 'Stream ATCS sedang offline.', 'warn');
             video.src = fallbackCctvSrc;
             video.muted = true;
             video.load();
@@ -282,7 +285,7 @@
             video.muted = true;
             video.autoplay = true;
             video.playsInline = true;
-            setCctvStatus(videoId, 'Menghubungkan ke stream ATCS Medan...', 'warn');
+            setCctvStatus(videoId, 'Menghubungkan...', 'warn');
 
             if (window.Hls && Hls.isSupported()) {
                 const hls = new Hls({
@@ -294,7 +297,6 @@
                 hls.on(Hls.Events.ERROR, (event, data) => {
                     const isNetworkError = data && data.type === Hls.ErrorTypes.NETWORK_ERROR;
                     if (isNetworkError || (data && data.fatal)) {
-                        console.warn('CCTV stream gagal dimuat, memakai fallback demo:', data);
                         useCctvFallback(videoId);
                     }
                 });
@@ -323,11 +325,11 @@
         async function loadCctvMarkers() {
             try {
                 const response = await fetch('/api/cctv');
-                if (!response.ok) throw new Error('Endpoint CCTV tidak dapat diakses.');
+                if (!response.ok) throw new Error('Error');
 
                 const payload = await response.json();
                 const cctvData = Array.isArray(payload) ? payload : payload.data;
-                if (!Array.isArray(cctvData)) throw new Error('Format data CCTV tidak valid.');
+                if (!Array.isArray(cctvData)) throw new Error('Error');
                 cctvLayer.clearLayers();
 
                 cctvData.forEach((cctv) => {
@@ -348,9 +350,7 @@
                     marker.on('popupopen', () => initializeCctvPlayer(videoId, cctv.stream_url));
                     marker.on('popupclose', () => destroyCctvPlayer(videoId));
                 });
-            } catch (error) {
-                console.error('Gagal memuat marker CCTV:', error);
-            }
+            } catch (error) {}
         }
 
         let clickState = 'origin';
@@ -375,13 +375,37 @@
             }
         });
 
+        document.getElementById('btnGps').addEventListener('click', () => {
+            if (navigator.geolocation) {
+                const btn = document.getElementById('btnGps');
+                btn.classList.add('animate-pulse');
+                navigator.geolocation.getCurrentPosition(async (position) => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    if(originMarker) map.removeLayer(originMarker);
+                    originPoint = {lat, lng};
+                    originMarker = L.marker([lat,lng], {icon:iconOrigin}).addTo(map);
+                    map.setView([lat, lng], 15);
+                    const inp = document.getElementById('asalText');
+                    inp.value = "Mendeteksi lokasi...";
+                    inp.value = await getAddressFromCoords(lat, lng);
+                    btn.classList.remove('animate-pulse');
+                    clickState = 'dest';
+                    document.getElementById('tujuanText').classList.add('ring-2','ring-blue-400');
+                    setTimeout(()=>document.getElementById('tujuanText').classList.remove('ring-2','ring-blue-400'),1500);
+                }, () => {
+                    btn.classList.remove('animate-pulse');
+                });
+            }
+        });
+
         document.getElementById('routeForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            if(!originPoint||!destPoint){ showError("Klik peta untuk menentukan asal dan tujuan terlebih dahulu."); return; }
+            if(!originPoint||!destPoint){ showError("Lengkapi titik."); return; }
             const kendaraan = document.querySelector('input[name="kendaraan"]:checked').value;
             const btn = document.getElementById('submitBtn');
             const origHTML = btn.innerHTML;
-            btn.innerHTML='<div class="loader"></div> Memproses...'; btn.disabled=true; btn.classList.add('opacity-70');
+            btn.innerHTML='<div class="loader"></div>'; btn.disabled=true; btn.classList.add('opacity-70');
             document.getElementById('resultSection').classList.add('hidden');
             document.getElementById('bottomPanel').classList.add('hidden');
             document.getElementById('errorSection').classList.add('hidden');
@@ -390,7 +414,7 @@
                 const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${originPoint.lng},${originPoint.lat};${destPoint.lng},${destPoint.lat}?steps=true&geometries=geojson&overview=full`;
                 const osrmRes = await fetch(osrmUrl);
                 const osrmData = await osrmRes.json();
-                if(!osrmData.routes||!osrmData.routes.length) throw new Error("Rute tidak ditemukan antara kedua titik.");
+                if(!osrmData.routes||!osrmData.routes.length) throw new Error("Rute tidak ditemukan.");
 
                 const route = osrmData.routes[0];
                 const steps = route.legs[0].steps;
