@@ -4,6 +4,37 @@ from flask import Flask, render_template, request, jsonify
 
 app = Flask(__name__)
 
+ATCS_MEDAN_CCTV = [
+    {
+        "id": 1,
+        "nama": "Simpang Ahmad Yani - Pulau Pinang",
+        "lat": 3.5888,
+        "lng": 98.6775,
+        "stream_url": "https://atcsdishub.medan.go.id/stream/L2AHMADYANIPULAUPINANG/stream.m3u8"
+    },
+    {
+        "id": 2,
+        "nama": "Simpang Kesawan - Palang Merah",
+        "lat": 3.5857,
+        "lng": 98.6781,
+        "stream_url": "https://atcsdishub.medan.go.id/stream/L3KESAWANPALANGMERAH/stream.m3u8"
+    },
+    {
+        "id": 3,
+        "nama": "Simpang S.M. Raja - Amaliun",
+        "lat": 3.5786,
+        "lng": 98.6873,
+        "stream_url": "https://atcsdishub.medan.go.id/stream/L7SM.RAJAAMALIUN/stream.m3u8"
+    },
+    {
+        "id": 4,
+        "nama": "Simpang Suprapto - Multatuli",
+        "lat": 3.5794,
+        "lng": 98.6823,
+        "stream_url": "https://atcsdishub.medan.go.id/stream/L12SUPRAPTOMULTATULI/stream.m3u8"
+    },
+]
+
 class Kendaraan:
     def __init__(self, jenis):
         self.jenis = jenis.lower()
@@ -83,6 +114,10 @@ class Navigator:
 @app.route('/')
 def index():
     return render_template('index.html')
+
+@app.route('/api/cctv', methods=['GET'])
+def get_cctv():
+    return jsonify(ATCS_MEDAN_CCTV)
 
 @app.route('/api/route', methods=['POST'])
 def api_route():
