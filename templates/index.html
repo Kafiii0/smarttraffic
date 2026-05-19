@@ -20,24 +20,18 @@
         .pulse-pin.dest { background:#ef4444; animation: pulse-red 2s infinite; }
         @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(37,99,235,.7)} 70%{box-shadow:0 0 0 14px rgba(37,99,235,0)} 100%{box-shadow:0 0 0 0 rgba(37,99,235,0)} }
         @keyframes pulse-red { 0%{box-shadow:0 0 0 0 rgba(239,68,68,.7)} 70%{box-shadow:0 0 0 14px rgba(239,68,68,0)} 100%{box-shadow:0 0 0 0 rgba(239,68,68,0)} }
-
-        /* Resize handle */
         .resize-handle { width:6px; cursor:col-resize; background:transparent; transition:background .2s; position:absolute; right:0; top:0; bottom:0; z-index:30; }
         .resize-handle:hover, .resize-handle.active { background: #3b82f6; }
     </style>
 </head>
 <body class="h-screen w-screen overflow-hidden flex flex-col bg-slate-100 antialiased text-slate-800">
 
-    <!-- Top Row: Sidebar + Map -->
     <div class="flex flex-1 min-h-0 relative">
 
-        <!-- Sidebar -->
         <aside id="sidebar" class="h-full bg-white shadow-lg z-20 flex flex-col relative shrink-0" style="width:400px; min-width:280px; max-width:600px;">
             
-            <!-- Resize Handle -->
             <div id="resizeHandle" class="resize-handle"></div>
 
-            <!-- Header -->
             <div class="p-5 bg-slate-900 text-white">
                 <div class="flex items-center gap-3">
                     <div class="p-2 bg-blue-600/20 rounded-lg">
@@ -50,7 +44,6 @@
                 </div>
             </div>
 
-            <!-- Scrollable Form -->
             <div class="flex-1 overflow-y-auto p-5 flex flex-col gap-5">
                 
                 <div class="flex items-start gap-2.5 p-3 bg-blue-50 rounded-lg border border-blue-100 text-xs text-blue-700">
@@ -100,7 +93,6 @@
                     <span id="errorMessage"></span>
                 </div>
 
-                <!-- Summary Cards (in sidebar) -->
                 <div id="resultSection" class="hidden border-t border-slate-100 pt-4">
                     <h3 class="font-bold text-slate-800 mb-3 flex items-center gap-2 text-sm">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
@@ -125,7 +117,6 @@
             </div>
         </aside>
 
-        <!-- Map -->
         <main class="flex-1 relative z-10 h-full">
             <div id="map" class="w-full h-full" style="cursor:crosshair;"></div>
             <div class="absolute bottom-4 right-4 z-[1000] bg-white/80 backdrop-blur-md px-3 py-1.5 rounded-full shadow border border-white/50 flex items-center gap-2 pointer-events-none">
@@ -135,7 +126,6 @@
         </main>
     </div>
 
-    <!-- Bottom Panel: Detail Segmen (hidden initially) -->
     <div id="bottomPanel" class="hidden bg-white border-t border-slate-200 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] z-30">
         <div class="max-w-screen-2xl mx-auto px-6 py-4">
             <div class="flex items-center justify-between mb-4">
@@ -147,15 +137,12 @@
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
             </div>
-            <div id="routeDetails" class="overflow-x-auto pb-3">
-                <!-- Populated by JS as TransJakarta-style timeline -->
-            </div>
+            <div id="routeDetails" class="overflow-x-auto pb-3"></div>
         </div>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script>
-        // ===== SIDEBAR RESIZE =====
         const sidebar = document.getElementById('sidebar');
         const handle = document.getElementById('resizeHandle');
         let isResizing = false;
@@ -163,7 +150,6 @@
         document.addEventListener('mousemove', (e) => { if(!isResizing) return; let w = e.clientX; if(w < 280) w = 280; if(w > 600) w = 600; sidebar.style.width = w + 'px'; map.invalidateSize(); });
         document.addEventListener('mouseup', () => { if(isResizing){ isResizing = false; handle.classList.remove('active'); document.body.style.cursor=''; document.body.style.userSelect=''; map.invalidateSize(); }});
 
-        // ===== MAP INIT =====
         const map = L.map('map', { zoomControl: false }).setView([3.5900, 98.6780], 13);
         L.control.zoom({ position: 'topright' }).addTo(map);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { attribution: '&copy; OpenStreetMap &copy; CARTO' }).addTo(map);
@@ -198,7 +184,6 @@
             }
         });
 
-        // ===== FORM SUBMIT =====
         document.getElementById('routeForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             if(!originPoint||!destPoint){ showError("Klik peta untuk menentukan asal dan tujuan terlebih dahulu."); return; }
@@ -218,8 +203,6 @@
 
                 const route = osrmData.routes[0];
                 const steps = route.legs[0].steps;
-                
-                // Filter step yang jaraknya > 0 (OSRM selalu ada step "arrive" dengan distance=0)
                 const validSteps = steps.filter(s => s.distance > 0);
                 const backendSegments = validSteps.map(s => ({ name: s.name || "Jalan Lokal", distance: s.distance }));
 
@@ -243,46 +226,39 @@
             kep.textContent = data.status_kepadatan;
             kep.className = 'font-bold ' + (data.status_kepadatan==='Lancar'?'text-emerald-600':data.status_kepadatan==='Padat'?'text-amber-500':'text-rose-600');
 
-            // Bottom panel: TransJakarta-style timeline
             const panel = document.getElementById('bottomPanel');
             panel.classList.remove('hidden');
             const container = document.getElementById('routeDetails');
             container.innerHTML = '';
 
-            // Filter segmen yang terlalu pendek
             const segments = data.detail_rute.filter(r => r.jarak_km >= 0.03);
             if(segments.length === 0) { map.invalidateSize(); return; }
 
-            // Build timeline HTML
             let html = '<div class="flex items-start" style="min-width:max-content;">';
 
             segments.forEach((r, i) => {
-                // Warna berdasarkan kondisi
                 let dotBg = r.kondisi==='lancar'?'bg-emerald-500':r.kondisi==='padat'?'bg-amber-400':'bg-rose-500';
                 let dotRing = r.kondisi==='lancar'?'ring-emerald-200':r.kondisi==='padat'?'ring-amber-200':'ring-rose-200';
                 let lineBg = r.kondisi==='lancar'?'bg-emerald-400':r.kondisi==='padat'?'bg-amber-400':'bg-rose-400';
                 let badge = r.kondisi==='lancar'?'bg-emerald-100 text-emerald-700':r.kondisi==='padat'?'bg-amber-100 text-amber-700':'bg-rose-100 text-rose-700';
 
-                // Station dot + label
                 html += `<div class="flex flex-col items-center shrink-0" style="width:40px;">`;
                 html += `  <div class="w-4 h-4 rounded-full ${dotBg} ring-4 ${dotRing} z-10"></div>`;
                 html += `  <div class="mt-2 text-[10px] font-bold text-slate-500 text-center leading-tight w-20">${i === 0 ? 'Mulai' : 'Titik ' + (i+1)}</div>`;
                 html += `</div>`;
 
-                // Connecting line + info card
                 html += `<div class="flex flex-col items-center shrink-0" style="width:140px;">`;
                 html += `  <div class="w-full h-1 ${lineBg} rounded-full mt-1.5"></div>`;
                 html += `  <div class="mt-2 bg-white border border-slate-100 rounded-lg shadow-sm p-2 w-full">`;
                 html += `    <div class="font-bold text-[11px] text-slate-700 truncate" title="${r.jalan}">${r.jalan}</div>`;
                 html += `    <div class="flex items-center gap-1.5 mt-1 text-[10px] text-slate-400 font-medium">`;
-                html += `      <span>${r.jarak_km} km</span><span>·</span><span>${r.estimasi_menit} mnt</span>`;
+                html += `      <span>${r.jarak_km} km</span><span>&middot;</span><span>${r.estimasi_menit} mnt</span>`;
                 html += `    </div>`;
                 html += `    <span class="inline-block mt-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${badge}">${r.kondisi}</span>`;
                 html += `  </div>`;
                 html += `</div>`;
             });
 
-            // Final destination dot
             html += `<div class="flex flex-col items-center shrink-0" style="width:40px;">`;
             html += `  <div class="w-4 h-4 rounded-full bg-rose-500 ring-4 ring-rose-200 z-10"></div>`;
             html += `  <div class="mt-2 text-[10px] font-bold text-slate-500 text-center leading-tight w-20">Tujuan</div>`;
@@ -303,7 +279,6 @@
                 const coords = step.geometry.coordinates.map(c=>[c[1],c[0]]);
                 allCoords = allCoords.concat(coords);
 
-                // Safe access: if backend has fewer entries, default to lancar
                 const detail = backendDetails[i];
                 const kondisi = detail ? detail.kondisi : 'lancar';
                 let color = '#10b981';
