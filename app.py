@@ -174,5 +174,59 @@ def api_route():
     
     return jsonify(hasil)
 
+@app.route('/api/route/alternatives', methods=['POST'])
+def api_route_alternatives():
+    data = request.json
+    jenis_kendaraan = data.get('kendaraan', 'motor')
+    alternatives = data.get('alternatives', [])
+
+    if not alternatives:
+        return jsonify({"error": "Data alternatif rute kosong"}), 400
+
+    kendaraan = Kendaraan(jenis_kendaraan)
+    hasil_semua = []
+
+    for idx, alt in enumerate(alternatives):
+        segments = alt.get('segments', [])
+        route_label = alt.get('label', f'Rute {idx + 1}')
+
+        list_objek_jalur = []
+        for seg in segments:
+            jarak_km = seg.get('distance', 0) / 1000.0
+            if jarak_km <= 0:
+                continue
+            nama_jalan = seg.get('name', 'Jalan Tanpa Nama')
+            # Use a deterministic hash per route index to vary conditions across alternatives
+            hash_val = (int(hashlib.md5(nama_jalan.encode()).hexdigest(), 16) + idx * 37) % 100
+            if hash_val < 60:
+                kondisi = 'lancar'
+            elif hash_val < 90:
+                kondisi = 'padat'
+            else:
+                kondisi = 'macet'
+            list_objek_jalur.append(Jalur(nama_jalan, jarak_km, kondisi))
+
+        if not list_objek_jalur:
+            continue
+
+        navigator = Navigator()
+        navigator.set_rute(list_objek_jalur)
+        hasil = navigator.proses_perjalanan(kendaraan)
+        hasil['kendaraan'] = kendaraan.jenis
+        hasil['kecepatan_rata_rata'] = kendaraan.kecepatan_rata_rata
+        hasil['label'] = route_label
+        hasil['route_index'] = idx
+        hasil_semua.append(hasil)
+
+    if not hasil_semua:
+        return jsonify({"error": "Semua rute terlalu pendek untuk diproses"}), 400
+
+    # Mark the fastest route
+    fastest_idx = min(range(len(hasil_semua)), key=lambda i: hasil_semua[i]['estimasi_waktu_total_menit'])
+    for i, h in enumerate(hasil_semua):
+        h['is_fastest'] = (i == fastest_idx)
+
+    return jsonify(hasil_semua)
+
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
